@@ -1,5 +1,6 @@
 package com.shortlink.controller;
 
+import com.shortlink.common.Result;
 import com.shortlink.entity.ShortLink;
 import com.shortlink.mapper.LinkMapper;
 import com.shortlink.util.Base62;
@@ -40,24 +41,24 @@ public class LinkController {
 
     @PostMapping("/api/links")
     @Transactional
-    public CreateResponse create(@RequestBody CreateRequest req) {
+    public Result<CreateResponse> create(@RequestBody CreateRequest req) {
         if (req.getLongUrl() == null || req.getLongUrl().isBlank()) {
             throw new IllegalArgumentException("longUrl 不能为空");
         }
 
-        // ① 先插占位码，换回自增 id
+        //先插占位码，换回自增 id
         ShortLink link = new ShortLink();
         link.setCode("t" + UUID.randomUUID().toString().replace("-", "").substring(0, 9));
         link.setLongUrl(req.getLongUrl());
         linkMapper.insert(link);
 
-        // ② 用 id 生成真码
+        //用 id 生成真码
         String code = Base62.encode(link.getId());
 
-        // ③ 回填
+        //回填
         linkMapper.updateCode(link.getId(), code);
 
-        return new CreateResponse(code, "http://127.0.0.1:8080/" + code);
+        return Result.ok(new CreateResponse(code, "http://127.0.0.1:8080/" + code));
     }
 
     @GetMapping("/{code}")

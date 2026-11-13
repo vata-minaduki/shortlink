@@ -79,8 +79,12 @@ Content-Type: application/json
 
 ```json
 {
-  "code": "1",
-  "shortUrl": "http://127.0.0.1:8080/1"
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "code": "1",
+    "shortUrl": "http://127.0.0.1:8080/1"
+  }
 }
 ```
 
@@ -92,6 +96,23 @@ GET /{code}
 
 - 存在且有效：`302 Found`，`Location: 原长链接`
 - 不存在 / 已禁用 / 已过期：`404 Not Found`
+
+### 统一返回格式
+
+所有 JSON 接口返回：
+
+| 字段 | 说明 |
+|---|---|
+| `code` | 业务码，`0` 表示成功，非 0 表示失败 |
+| `message` | 提示信息 |
+| `data` | 业务数据，失败时为 `null` |
+
+错误示例：
+
+```json
+{"code": 400, "message": "longUrl 不能为空", "data": null}
+```
+注：跳转接口 GET /{code} 不使用该格式——它直接返回 HTTP 302 + Location 头。
 
 ## 核心设计
 

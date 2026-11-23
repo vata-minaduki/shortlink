@@ -76,4 +76,12 @@ public class LinkController {
                 .location(URI.create(link.getLongUrl()))
                 .build();
     }
+
+    @PostMapping("/api/links/{code}/disable")
+    public Result<Void> disable(@PathVariable String code){
+
+        linkMapper.disable(code);
+
+        return Result.ok(null);
+    }
 }

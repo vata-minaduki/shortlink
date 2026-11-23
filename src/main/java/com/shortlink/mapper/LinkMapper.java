@@ -17,4 +17,8 @@ public interface LinkMapper {
 
     @Update("UPDATE short_link SET code = #{code} WHERE id = #{id}")
     int updateCode(@Param("id") Long id, @Param("code") String code);
+
+    // 禁用
+    @Update("UPDATE short_link SET status = 0 WHERE code = #{code}")
+    int disable(@Param("code") String code);
 }

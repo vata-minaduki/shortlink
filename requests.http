@@ -3,7 +3,7 @@
 #
 #{"longUrl": "https://www.baidu.com"}
 
-POST http://127.0.0.1:8080/api/links
+POST http://127.0.0.1:8080/api/links/1/disable
 Content-Type: application/json
 
 {"longUrl": "https://www.baidu.com"}

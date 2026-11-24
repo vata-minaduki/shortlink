@@ -21,4 +21,10 @@ public interface LinkMapper {
     // 禁用
     @Update("UPDATE short_link SET status = 0 WHERE code = #{code}")
     int disable(@Param("code") String code);
+
+    //统计
+    @Insert("INSERT INTO link_click(code, click_date, click_count) " +
+            "VALUES(#{code}, CURDATE(), 1) " +
+            "ON DUPLICATE KEY UPDATE click_count = click_count + 1")
+    int increaseClick(@Param("code") String code);
 }

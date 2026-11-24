@@ -73,6 +73,7 @@ public class LinkController {
             return ResponseEntity.notFound().build();
         }
 
+        linkMapper.increaseClick(code);
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(link.getLongUrl()))
                 .build();
@@ -80,9 +81,8 @@ public class LinkController {
 
     @PostMapping("/api/links/{code}/disable")
     public Result<Void> disable(@PathVariable String code){
-
-        linkMapper.disable(code);
-
+        int rows = linkMapper.disable(code);
+        if (rows == 0) throw new BusinessException(404,"短码不存在");
         return Result.ok(null);
     }
 

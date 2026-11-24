@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS link_click (
     id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     code        VARCHAR(10) NOT NULL,
     click_date  DATE NOT NULL,
-    click_count BIGINT NOT NULL DEFAULT 0,
+    link_click BIGINT NOT NULL DEFAULT 0,
     UNIQUE KEY uk_code_date (code, click_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

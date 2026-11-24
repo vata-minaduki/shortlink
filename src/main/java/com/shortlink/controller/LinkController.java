@@ -2,6 +2,7 @@ package com.shortlink.controller;
 
 import com.shortlink.common.BusinessException;
 import com.shortlink.common.Result;
+import com.shortlink.entity.DailyClick;
 import com.shortlink.entity.ShortLink;
 import com.shortlink.mapper.LinkMapper;
 import com.shortlink.util.Base62;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -93,5 +95,15 @@ public class LinkController {
             throw new BusinessException(404,"短码不存在");
         }
         return Result.ok(shortLink);
+    }
+
+    public record StatsResponse(long total,List<DailyClick> daily){}
+    @GetMapping("/api/links/{code}/stats")
+    public Result<StatsResponse> stats(@PathVariable String code){
+        List<DailyClick> daily = linkMapper.findClicks(code);
+        long total = daily.stream()
+                .mapToLong(DailyClick::getClickCount)
+                .sum();
+        return Result.ok(new StatsResponse(total,daily));
     }
 }

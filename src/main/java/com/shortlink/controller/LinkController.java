@@ -1,5 +1,6 @@
 package com.shortlink.controller;
 
+import com.shortlink.common.BusinessException;
 import com.shortlink.common.Result;
 import com.shortlink.entity.ShortLink;
 import com.shortlink.mapper.LinkMapper;
@@ -83,5 +84,14 @@ public class LinkController {
         linkMapper.disable(code);
 
         return Result.ok(null);
+    }
+
+    @GetMapping("/api/links/{code}")
+    public Result<ShortLink> detail(@PathVariable String code){
+        ShortLink shortLink = linkMapper.findByCode(code);
+        if(shortLink == null){
+            throw new BusinessException(404,"短码不存在");
+        }
+        return Result.ok(shortLink);
     }
 }

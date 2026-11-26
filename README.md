@@ -6,13 +6,15 @@
 
 - [x] 创建短链接：自增 ID + Base62 编码生成短码
 - [x] 跳转：`GET /{code}` 返回 302
-- [x] 异常处理：不存在 / 已禁用 / 已过期 → 404
-- [x] 数据持久化（MySQL + MyBatis）
-- [ ] 点击统计（Redis 计数 + 定时落库）
+- [x] 查询短链详情
+- [x] 禁用短链（软删除）
+- [x] 点击统计：记录每次跳转，支持按天查询
+- [x] 统一返回体与全局异常处理
+- [x] 单元测试（Base62 编码）
 - [ ] Redis 缓存（Cache-Aside）
-- [ ] 过期数据自动清理
+- [ ] 过期时间与自动清理
 - [ ] 开放重定向防护 / IP 限流
-- [ ] Docker + Nginx 部署
+- [ ] Docker + Nginx 部署到公网
 
 ## 技术栈
 
@@ -66,7 +68,15 @@ mvn spring-boot:run
 
 ## 接口
 
-### 创建短链接
+| 方法 | 路径 | 作用 |
+|---|---|---|
+| `POST` | `/api/links` | 创建短链 |
+| `GET` | `/{code}` | 跳转（302 重定向） |
+| `GET` | `/api/links/{code}` | 查询短链详情 |
+| `POST` | `/api/links/{code}/disable` | 禁用短链（软删除） |
+| `GET` | `/api/links/{code}/stats` | 查询点击统计 |
+
+### 创建短链
 
 ```http
 POST /api/links
@@ -97,6 +107,25 @@ GET /{code}
 - 存在且有效：`302 Found`，`Location: 原长链接`
 - 不存在 / 已禁用 / 已过期：`404 Not Found`
 
+
+### 统计查询
+
+```http
+GET /api/links/5/stats
+```
+
+响应：
+
+```json
+{
+  "code": 0, "message": "ok",
+  "data": {
+    "total": 3,
+    "daily": [{"clickDate": "2026-11-26", "clickCount": 3}]
+  }
+}
+```
+
 ### 统一返回格式
 
 所有 JSON 接口返回：
@@ -112,7 +141,7 @@ GET /{code}
 ```json
 {"code": 400, "message": "longUrl 不能为空", "data": null}
 ```
-注：跳转接口 GET /{code} 不使用该格式——它直接返回 HTTP 302 + Location 头。
+>注：跳转接口 GET /{code} 不使用该格式——它直接返回 HTTP 302 + Location 头。
 
 ## 核心设计
 
@@ -142,20 +171,28 @@ id = 3843     → "ZZ"
 
 ## 项目结构
 
+## 项目结构
+
 ```
 src/main/java/com/shortlink/
-├── ShortlinkApplication.java   启动类（@MapperScan）
+├── ShortlinkApplication.java       启动类（@SpringBootApplication + @MapperScan）
+├── common/
+│   ├── Result.java                 统一返回体
+│   ├── BusinessException.java      业务异常
+│   └── GlobalExceptionHandler.java 全局异常处理
 ├── controller/
-│   └── LinkController.java     创建 / 跳转接口
+│   └── LinkController.java         创建 / 跳转 / 详情 / 禁用 / 统计
 ├── entity/
-│   └── ShortLink.java          短链实体
+│   ├── ShortLink.java              短链实体
+│   └── DailyClick.java             单日点击统计
 ├── mapper/
-│   └── LinkMapper.java         MyBatis Mapper（注解式 SQL）
+│   └── LinkMapper.java             MyBatis Mapper（注解式 SQL）
 └── util/
-    └── Base62.java             62 进制编码
+    └── Base62.java                 62 进制编码
 
 src/main/resources/application.yml
-schema.sql                      建库建表脚本
+src/test/java/com/shortlink/util/Base62Test.java
+schema.sql
 ```
 
 ## 后续计划

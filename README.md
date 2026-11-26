@@ -1,6 +1,6 @@
 # ShortLink · 短链接服务
 
-一个基于 Spring Boot 的短链接服务：把长网址转成短码，访问短码时 302 跳转到原地址。
+一个基于 Spring Boot 的短链接服务：把长网址转成短码，访问短码时 302 跳转回原地址。
 
 ## 功能
 
@@ -26,7 +26,9 @@
 | 持久层 | MyBatis 3 |
 | 数据库 | MySQL 8 |
 | 连接池 | HikariCP |
+| JSON | Jackson |
 | 构建 | Maven |
+| 测试 | JUnit 5 |
 
 ## 快速开始
 
@@ -38,8 +40,16 @@
 
 ### 1. 建库建表
 
+在项目根目录执行：
+
 ```bash
+# Linux / macOS / Git Bash
 mysql -u root -p < schema.sql
+```
+
+```powershell
+# Windows PowerShell（不支持 `<` 重定向，用管道）
+Get-Content .\schema.sql | mysql -u root -p
 ```
 
 ### 2. 配置数据库密码
@@ -49,7 +59,9 @@ mysql -u root -p < schema.sql
 ```bash
 # Linux / macOS
 export MYSQL_PASSWORD=你的密码
+```
 
+```powershell
 # Windows PowerShell
 $env:MYSQL_PASSWORD="你的密码"
 ```
@@ -76,6 +88,9 @@ mvn spring-boot:run
 | `POST` | `/api/links/{code}/disable` | 禁用短链（软删除） |
 | `GET` | `/api/links/{code}/stats` | 查询点击统计 |
 
+> 下方示例中的 `5` 是**短码（code）**，不是数据库 id。
+> 由于短码由 id 经 Base62 编码而来，只有当 id 小于 62 时两者才相同（例如 id=62 时短码为 `10`）。
+
 ### 创建短链
 
 ```http
@@ -98,6 +113,43 @@ Content-Type: application/json
 }
 ```
 
+### 查询详情
+
+```http
+GET /api/links/5
+```
+
+响应：
+
+```json
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "id": 5,
+    "code": "5",
+    "longUrl": "https://www.example.com/very/long/path",
+    "createdAt": "2026-11-26T12:30:00",
+    "expireAt": null,
+    "status": 1
+  }
+}
+```
+
+### 禁用短链
+
+```http
+POST /api/links/5/disable
+```
+
+响应：
+
+```json
+{"code": 0, "message": "ok", "data": null}
+```
+
+禁用为**软删除**：只把 `status` 置为 `0`，数据仍保留，跳转时返回 404。
+
 ### 跳转
 
 ```http
@@ -105,10 +157,9 @@ GET /{code}
 ```
 
 - 存在且有效：`302 Found`，`Location: 原长链接`
-- 不存在 / 已禁用 / 已过期：`404 Not Found`
+- 不存在 / 已禁用：`404 Not Found`
 
-
-### 统计查询
+### 点击统计
 
 ```http
 GET /api/links/5/stats
@@ -118,21 +169,24 @@ GET /api/links/5/stats
 
 ```json
 {
-  "code": 0, "message": "ok",
+  "code": 0,
+  "message": "ok",
   "data": {
     "total": 3,
-    "daily": [{"clickDate": "2026-11-26", "clickCount": 3}]
+    "daily": [
+      {"clickDate": "2026-11-26", "clickCount": 3}
+    ]
   }
 }
 ```
 
 ### 统一返回格式
 
-所有 JSON 接口返回：
+所有 JSON 接口返回 `{code, message, data}`：
 
 | 字段 | 说明 |
 |---|---|
-| `code` | 业务码，`0` 表示成功，非 0 表示失败 |
+| `code` | 业务码：`0` 成功，`400` 参数错误，`404` 资源不存在，`500` 服务端错误 |
 | `message` | 提示信息 |
 | `data` | 业务数据，失败时为 `null` |
 
@@ -141,7 +195,8 @@ GET /api/links/5/stats
 ```json
 {"code": 400, "message": "longUrl 不能为空", "data": null}
 ```
->注：跳转接口 GET /{code} 不使用该格式——它直接返回 HTTP 302 + Location 头。
+
+> 注：跳转接口 `GET /{code}` 不使用该格式——它返回 HTTP `302` + `Location` 头。
 
 ## 核心设计
 
@@ -169,7 +224,7 @@ id = 3843     → "ZZ"
 
 若在主表加 `click_count` 字段，每次点击都要 `UPDATE` 同一行，高并发下会产生**行锁竞争**。统计独立成表可按天汇总、保留历史，也能批量写入。
 
-## 项目结构
+计数使用 `INSERT ... ON DUPLICATE KEY UPDATE` 一条语句原子累加，避免"先查再改"的并发问题。
 
 ## 项目结构
 
@@ -198,8 +253,9 @@ schema.sql
 ## 后续计划
 
 - Redis 缓存短码 → 长链，防缓存穿透
-- 点击统计异步化
+- 点击统计异步化（Redis 计数 + 定时落库）
 - 过期数据定时清理
+- 开放重定向防护（只允许 http/https）
 - Docker 化 + Nginx 反代，部署到公网
 
 ## License

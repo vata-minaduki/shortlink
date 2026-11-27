@@ -64,7 +64,7 @@ public class LinkController {
         return Result.ok(new CreateResponse(code, "http://127.0.0.1:8080/" + code));
     }
 
-    @GetMapping("/{code}")
+    @GetMapping("/{code:[0-9a-zA-Z]{1,10}}")
     public ResponseEntity<Void> redirect(@PathVariable String code) {
         ShortLink link = linkMapper.findByCode(code);
 

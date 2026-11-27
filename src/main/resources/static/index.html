@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>短链接服务</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --fg: #1a1a1a;
+    --muted: #6b6b6b;
+    --accent: #0969da;
+    --line: #e0ddd6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    padding: 24px;
+  }
+  .card {
+    width: 100%;
+    max-width: 560px;
+    padding: 40px 32px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: -0.01em; }
+  .sub { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
+  input {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 15px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  input:focus { border-color: var(--accent); }
+  button {
+    margin-top: 14px;
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+    border: none;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  button:hover { opacity: .9; }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  .result {
+    margin-top: 20px;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 15px;
+    line-height: 1.6;
+    display: none;
+  }
+  .result.ok { display: block; background: #f0f7ff; border: 1px solid #cfe3ff; }
+  .result.err { display: block; background: #fff5f5; border: 1px solid #ffd0d0; color: #b42318; }
+  .result a { color: var(--accent); word-break: break-all; }
+  .hint { margin-top: 28px; font-size: 12.5px; color: var(--muted); line-height: 1.9; }
+  .hint code { background: #f0efec; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .hint a { color: var(--accent); text-decoration: none; }
+  .hint a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <h1>短链接服务</h1>
+    <p class="sub">输入长网址，生成一个更短的链接。</p>
+
+    <input id="url" type="text" placeholder="https://example.com/very/long/path" autocomplete="off" autofocus>
+    <button id="btn" type="button">生成短链</button>
+
+    <div id="result" class="result"></div>
+
+    <p class="hint">
+      接口文档：<a href="/swagger-ui.html">/swagger-ui.html</a><br>
+      短链跳转：<code>GET /{code}</code>　·　创建接口：<code>POST /api/links</code>
+    </p>
+  </main>
+
+<script>
+  const input = document.getElementById('url');
+  const btn = document.getElementById('btn');
+  const result = document.getElementById('result');
+
+  async function create() {
+    const longUrl = input.value.trim();
+
+    if (!longUrl) {
+      show('err', '请输入网址');
+      return;
+    }
+    if (!/^https?:\/\//i.test(longUrl)) {
+      show('err', '网址需要以 http:// 或 https:// 开头');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '生成中…';
+
+    try {
+      const res = await fetch('/api/links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ longUrl })
+      });
+      const json = await res.json();
+
+      if (json.code === 0) {
+        const url = escapeHtml(json.data.shortUrl);
+        show('ok', '短链接：<a href="' + url + '" target="_blank" rel="noopener">' + url + '</a>');
+      } else {
+        show('err', escapeHtml(json.message || '生成失败'));
+      }
+    } catch (e) {
+      show('err', '请求失败：' + escapeHtml(String(e)));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '生成短链';
+    }
+  }
+
+  function show(type, html) {
+    result.className = 'result ' + type;
+    result.innerHTML = html;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  btn.addEventListener('click', create);
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') create();
+  });
+</script>
+</body>
+</html>

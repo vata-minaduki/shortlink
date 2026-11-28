@@ -2,6 +2,8 @@
 
 一个基于 Spring Boot 的短链接服务：把长网址转成短码，访问短码时 302 跳转回原地址。
 
+**在线演示**：http://43.139.120.181:8080/ ｜ [接口文档](http://43.139.120.181:8080/swagger-ui/index.html)
+
 ## 功能
 
 - [x] 创建短链接：自增 ID + Base62 编码生成短码
@@ -249,6 +251,10 @@ src/main/resources/application.yml
 src/test/java/com/shortlink/util/Base62Test.java
 schema.sql
 ```
+
+## 文档
+
+- [部署流程 SOP](docs/deployment-guide.md)
 
 ## 后续计划
 

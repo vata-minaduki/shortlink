@@ -38,4 +38,11 @@ public interface LinkMapper {
             "WHERE code = #{code} "+
             "ORDER BY click_date DESC ")
     List<DailyClick> findClicks(@Param("code") String code);
+
+    @Select("SELECT id, code, long_url, created_at, expire_at, status " +
+            "FROM short_link ORDER BY id DESC LIMIT #{size} OFFSET #{offset}")
+    List<ShortLink> findPage(@Param("offset") int offset, @Param("size") int size);
+
+    @Select("SELECT COUNT(*) FROM short_link")
+    long countAll();
 }

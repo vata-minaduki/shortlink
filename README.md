@@ -89,7 +89,7 @@ mvn spring-boot:run
 | `GET` | `/api/links/{code}` | 查询短链详情 |
 | `POST` | `/api/links/{code}/disable` | 禁用短链（软删除） |
 | `GET` | `/api/links/{code}/stats` | 查询点击统计 |
-
+| `GET` | `/api/links?page=&size=` | 分页查询短链列表 |
 > 下方示例中的 `5` 是**短码（code）**，不是数据库 id。
 > 由于短码由 id 经 Base62 编码而来，只有当 id 小于 62 时两者才相同（例如 id=62 时短码为 `10`）。
 

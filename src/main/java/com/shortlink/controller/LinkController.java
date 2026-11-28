@@ -6,10 +6,13 @@ import com.shortlink.entity.DailyClick;
 import com.shortlink.entity.ShortLink;
 import com.shortlink.mapper.LinkMapper;
 import com.shortlink.util.Base62;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 import java.time.LocalDateTime;
@@ -19,6 +22,7 @@ import java.util.UUID;
 @RestController
 public class LinkController {
 
+    private static final Logger log = LoggerFactory.getLogger(LinkController.class);
     private final LinkMapper linkMapper;
 
     public LinkController(LinkMapper linkMapper) {
@@ -61,13 +65,16 @@ public class LinkController {
         //回填
         linkMapper.updateCode(link.getId(), code);
 
-        return Result.ok(new CreateResponse(code, "http://127.0.0.1:8080/" + code));
+        String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath()
+                .build().toUriString();
+        return Result.ok(new CreateResponse(code, baseUrl + "/" + code));
     }
 
     @GetMapping("/{code:[0-9a-zA-Z]{1,10}}")
     public ResponseEntity<Void> redirect(@PathVariable String code) {
         ShortLink link = linkMapper.findByCode(code);
 
+        // 不存在 / 已禁用 / 已过期 -> 404
         if (link == null || link.getStatus() == null || link.getStatus() == 0) {
             return ResponseEntity.notFound().build();
         }
@@ -75,7 +82,25 @@ public class LinkController {
             return ResponseEntity.notFound().build();
         }
 
-        linkMapper.increaseClick(code);
+        // 构造 URI，失败就给明确错误
+        URI uri;
+        try {
+            uri = URI.create(link.getLongUrl());
+            if (!uri.isAbsolute()
+                    || !("http".equals(uri.getScheme()) || "https".equals(uri.getScheme()))) {
+                throw new IllegalArgumentException("只允许 http/https 绝对地址");
+            }
+        } catch (IllegalArgumentException e) {
+            log.warn("短链原地址不合法: code={}, url={}", code, link.getLongUrl());
+            throw new BusinessException(500, "该短链的原地址不合法");
+        }
+
+        //计数
+        try {
+            linkMapper.increaseClick(code);
+        } catch (Exception e) {
+            log.warn("记录点击失败: code={}", code, e);
+        }
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(link.getLongUrl()))
                 .build();
@@ -105,5 +130,22 @@ public class LinkController {
                 .mapToLong(DailyClick::getClickCount)
                 .sum();
         return Result.ok(new StatsResponse(total,daily));
+    }
+
+    public record PageResponse<T>(int page, int size, long total, List<T> items) {}
+    @GetMapping("/api/links")
+    public Result<PageResponse<ShortLink>> list(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        if (page < 1) page = 1;
+        if (size < 1) size = 20;
+        if (size > 100) size = 100;            // 防止一次拉全表
+
+        int offset = (page - 1) * size;
+        List<ShortLink> items = linkMapper.findPage(offset, size);
+        long total = linkMapper.countAll();
+
+        return Result.ok(new PageResponse<>(page, size, total, items));
     }
 }

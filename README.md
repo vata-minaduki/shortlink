@@ -7,7 +7,7 @@
 ## 功能
 
 - [x] 创建短链接：自增 ID + Base62 编码生成短码
-- [x] 跳转：`GET /{code}` 返回 302
+- [x] 跳转：`GET /{code}` 返回 302（短码为 1~10 位字母或数字）
 - [x] 查询短链详情
 - [x] 禁用短链（软删除）
 - [x] 点击统计：记录每次跳转，支持按天查询
@@ -16,7 +16,7 @@
 - [ ] Redis 缓存（Cache-Aside）
 - [ ] 过期时间与自动清理
 - [ ] 开放重定向防护 / IP 限流
-- [ ] Docker + Nginx 部署到公网
+- [x] 部署到公网（腾讯云轻量应用服务器 + jar 直接运行）
 
 ## 技术栈
 
@@ -158,6 +158,7 @@ POST /api/links/5/disable
 GET /{code}
 ```
 
+- `{code}`：1~10 位字母或数字（`[0-9a-zA-Z]{1,10}`）
 - 存在且有效：`302 Found`，`Location: 原长链接`
 - 不存在 / 已禁用：`404 Not Found`
 
@@ -247,10 +248,37 @@ src/main/java/com/shortlink/
 └── util/
     └── Base62.java                 62 进制编码
 
-src/main/resources/application.yml
+src/main/resources/
+├── application.yml
+└── static/index.html             首页（输入长网址生成短链）
+
 src/test/java/com/shortlink/util/Base62Test.java
+docs/deployment-guide.md           部署 SOP
+deploy/manage.sh                   服务器启停脚本
 schema.sql
+Dockerfile                         （容器化，未验证）
 ```
+
+## 部署
+
+已部署在腾讯云轻量应用服务器（Ubuntu 24.04），当前是 **jar 直接运行**：
+
+```
+http://43.139.120.181:8080/
+```
+
+服务器上用 `nohup` 后台运行，日志落到 `app.log`，启停由 `deploy/manage.sh` 封装：
+
+```bash
+./manage.sh start     # 启动
+./manage.sh stop      # 停止（SIGTERM 优雅停机）
+./manage.sh restart   # 重启
+./manage.sh status    # 状态
+```
+
+数据库密码通过环境变量注入（`SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD`），不写进代码、不进 Git。
+
+完整的步骤与排错见 [部署流程 SOP](docs/deployment-guide.md)。
 
 ## 文档
 
@@ -262,7 +290,7 @@ schema.sql
 - 点击统计异步化（Redis 计数 + 定时落库）
 - 过期数据定时清理
 - 开放重定向防护（只允许 http/https）
-- Docker 化 + Nginx 反代，部署到公网
+- Docker 化 + Nginx 反代（当前为 jar 直接运行）
 
 ## License
 

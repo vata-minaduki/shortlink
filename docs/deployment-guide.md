@@ -76,7 +76,7 @@ EXIT;
 ### 3.1 上传
 
 ```powershell
-cd D:\Desktop\java\Project\shortlink
+# 在项目根目录执行
 scp target\shortlink-0.0.1-SNAPSHOT.jar ubuntu@服务器IP:/home/ubuntu/
 scp schema.sql ubuntu@服务器IP:/home/ubuntu/
 ```
